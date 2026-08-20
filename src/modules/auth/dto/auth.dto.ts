@@ -24,6 +24,17 @@ export class ChangePasswordDto {
   newPassword: string;
 }
 
+export class SetPasswordDto {
+  @ApiProperty()
+  @IsString()
+  token: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+
 export class RefreshDto {
   @ApiProperty()
   @IsString()

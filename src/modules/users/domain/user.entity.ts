@@ -33,6 +33,15 @@ export class UserEntity {
   @Column({ default: true })
   active: boolean;
 
+  @Column({ default: false })
+  mustSetPassword: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  inviteTokenHash: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  inviteExpiresAt: Date | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

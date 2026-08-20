@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -34,11 +35,42 @@ export class AuthService {
   async login(email: string, password: string) {
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Credenciales inválidas', details: [] });
+    if (user.mustSetPassword) {
+      throw new ForbiddenException({
+        code: 'PASSWORD_NOT_SET',
+        message: 'Debes crear tu contraseña con el enlace que te enviamos por correo.',
+        details: [],
+      });
+    }
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException({ code: 'INVALID_CREDENTIALS', message: 'Credenciales inválidas', details: [] });
     if (!user.active) {
       throw new ForbiddenException({ code: 'USER_INACTIVE', message: 'Usuario inactivo', details: [] });
     }
+    return this.issue(user);
+  }
+
+  async previewInvite(token: string) {
+    const user = await this.users.findByInviteToken(token);
+    if (!user) {
+      throw new BadRequestException({
+        code: 'INVITE_INVALID',
+        message: 'El enlace de invitación no es válido',
+        details: [],
+      });
+    }
+    if (!user.inviteExpiresAt || user.inviteExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException({
+        code: 'INVITE_EXPIRED',
+        message: 'El enlace de invitación ya venció. Pide uno nuevo al administrador.',
+        details: [],
+      });
+    }
+    return { name: user.name, email: user.email, role: user.role };
+  }
+
+  async setPasswordFromInvite(token: string, password: string) {
+    const user = await this.users.consumeInvite(token, password);
     return this.issue(user);
   }
 

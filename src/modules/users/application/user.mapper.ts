@@ -9,6 +9,7 @@ export function toUserDto(user: UserEntity) {
     title: user.title,
     role: user.role,
     active: user.active,
+    mustSetPassword: user.mustSetPassword,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

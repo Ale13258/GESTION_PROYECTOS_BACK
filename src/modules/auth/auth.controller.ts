@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './application/auth.service';
-import { ChangePasswordDto, LoginDto, LogoutDto, RefreshDto } from './dto/auth.dto';
+import { ChangePasswordDto, LoginDto, LogoutDto, RefreshDto, SetPasswordDto } from './dto/auth.dto';
 import { Public } from '../../common/decorators/auth.decorators';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthUser } from '../../common/types/auth-user';
@@ -21,6 +21,18 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshDto) {
     return this.auth.refresh(dto.refreshToken);
+  }
+
+  @Public()
+  @Get('invite')
+  previewInvite(@Query('token') token: string) {
+    return this.auth.previewInvite(token ?? '');
+  }
+
+  @Public()
+  @Post('set-password')
+  setPassword(@Body() dto: SetPasswordDto) {
+    return this.auth.setPasswordFromInvite(dto.token, dto.password);
   }
 
   @ApiBearerAuth()

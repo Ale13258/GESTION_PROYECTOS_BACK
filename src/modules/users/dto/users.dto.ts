@@ -17,10 +17,17 @@ export class CreateUserDto {
   @IsString()
   title?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ enum: [ROLE.ADMIN, ROLE.COLLABORATOR], default: ROLE.COLLABORATOR })
+  @IsOptional()
+  @IsIn([ROLE.ADMIN, ROLE.COLLABORATOR])
+  role?: typeof ROLE.ADMIN | typeof ROLE.COLLABORATOR;
+
+  /** Conservado por compatibilidad; el alta ahora invita por correo. */
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   @MinLength(6)
-  password: string;
+  password?: string;
 }
 
 export class UpdateUserDto {

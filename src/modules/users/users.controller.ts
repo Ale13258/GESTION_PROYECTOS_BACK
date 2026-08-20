@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './application/users.service';
 import { CreateUserDto, SetActiveDto, UpdateUserDto, UsersQueryDto } from './dto/users.dto';
@@ -19,8 +19,15 @@ export class UsersController {
   }
 
   @Post()
+  @HttpCode(201)
   create(@Body() dto: CreateUserDto) {
     return this.users.create(dto);
+  }
+
+  @Post(':id/invite')
+  @HttpCode(200)
+  resendInvite(@Param('id', ParseUUIDPipe) id: string) {
+    return this.users.resendInvite(id);
   }
 
   @Get(':id')

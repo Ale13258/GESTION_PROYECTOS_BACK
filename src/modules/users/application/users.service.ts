@@ -3,22 +3,32 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
+import { createHash, randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
 import { UserEntity } from '../domain/user.entity';
 import { CreateUserDto, UpdateUserDto, UsersQueryDto } from '../dto/users.dto';
 import { paginated } from '../../../common/dto/pagination.dto';
 import { ROLE } from '../../../common/constants';
+import { MailService } from '../../../common/mail/mail.service';
 import { toUserDto } from './user.mapper';
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly repo: Repository<UserEntity>,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async findByEmail(email: string) {
@@ -37,6 +47,12 @@ export class UsersService {
       throw new ForbiddenException({ code: 'USER_INACTIVE', message: 'Usuario inactivo', details: [] });
     }
     return user;
+  }
+
+  async findByInviteToken(token: string) {
+    const hash = this.hashToken(token);
+    if (!hash) return null;
+    return this.repo.findOne({ where: { inviteTokenHash: hash } });
   }
 
   async list(query: UsersQueryDto) {
@@ -65,11 +81,13 @@ export class UsersService {
       name: dto.name,
       email: dto.email.toLowerCase(),
       title: dto.title ?? null,
-      passwordHash: await bcrypt.hash(dto.password, 10),
-      role: ROLE.COLLABORATOR,
+      passwordHash: await bcrypt.hash(randomBytes(24).toString('hex'), 10),
+      role: dto.role ?? ROLE.COLLABORATOR,
       active: true,
+      mustSetPassword: true,
     });
-    return toUserDto(await this.repo.save(user));
+    const saved = await this.repo.save(user);
+    return this.issueInvite(saved);
   }
 
   async get(id: string) {
@@ -100,6 +118,94 @@ export class UsersService {
   async updatePassword(id: string, password: string) {
     const user = await this.findByIdOrThrow(id);
     user.passwordHash = await bcrypt.hash(password, 10);
+    user.mustSetPassword = false;
+    user.inviteTokenHash = null;
+    user.inviteExpiresAt = null;
     await this.repo.save(user);
+  }
+
+  async resendInvite(id: string) {
+    const user = await this.findByIdOrThrow(id);
+    if (!user.mustSetPassword) {
+      throw new BadRequestException({
+        code: 'PASSWORD_ALREADY_SET',
+        message: 'Este usuario ya creó su contraseña',
+        details: [],
+      });
+    }
+    return this.issueInvite(user);
+  }
+
+  async consumeInvite(token: string, password: string) {
+    const user = await this.findByInviteToken(token);
+    if (!user) {
+      throw new BadRequestException({
+        code: 'INVITE_INVALID',
+        message: 'El enlace de invitación no es válido',
+        details: [],
+      });
+    }
+    if (!user.active) {
+      throw new ForbiddenException({ code: 'USER_INACTIVE', message: 'Usuario inactivo', details: [] });
+    }
+    if (!user.inviteExpiresAt || user.inviteExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException({
+        code: 'INVITE_EXPIRED',
+        message: 'El enlace de invitación ya venció. Pide uno nuevo al administrador.',
+        details: [],
+      });
+    }
+    user.passwordHash = await bcrypt.hash(password, 10);
+    user.mustSetPassword = false;
+    user.inviteTokenHash = null;
+    user.inviteExpiresAt = null;
+    return this.repo.save(user);
+  }
+
+  private async issueInvite(user: UserEntity) {
+    const token = randomBytes(32).toString('hex');
+    const hash = this.hashToken(token);
+    if (!hash) {
+      throw new BadRequestException({
+        code: 'INVITE_INVALID',
+        message: 'No se pudo generar la invitación',
+        details: [],
+      });
+    }
+    user.inviteTokenHash = hash;
+    user.inviteExpiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    user.mustSetPassword = true;
+    await this.repo.save(user);
+
+    const inviteUrl = `${this.appUrl()}/invitar?token=${token}`;
+    const queued = this.mail.isConfigured();
+    if (queued) {
+      this.mail.queueInviteEmail({
+        to: user.email,
+        name: user.name,
+        role: user.role,
+        inviteUrl,
+        expiresAt: user.inviteExpiresAt,
+      });
+    } else {
+      this.logger.warn(`SMTP no configurado. Enlace de invitación: ${inviteUrl}`);
+    }
+
+    return {
+      ...toUserDto(user),
+      inviteEmailSent: queued,
+      inviteUrl: queued ? undefined : inviteUrl,
+    };
+  }
+
+  private appUrl(): string {
+    const value = this.config.get<string>('APP_PUBLIC_URL') || 'https://preubaproyecto.web.app';
+    return value.trim().replace(/^["']|["']$/g, '').replace(/\/$/, '');
+  }
+
+  private hashToken(token: string): string | null {
+    const value = token?.trim();
+    if (!value || value.length < 16) return null;
+    return createHash('sha256').update(value).digest('hex');
   }
 }
