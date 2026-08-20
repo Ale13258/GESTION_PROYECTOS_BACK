@@ -178,28 +178,34 @@ export class UsersService {
     await this.repo.save(user);
 
     const inviteUrl = `${this.appUrl()}/invitar?token=${token}`;
-    const queued = this.mail.isConfigured();
-    if (queued) {
-      this.mail.queueInviteEmail({
-        to: user.email,
-        name: user.name,
-        role: user.role,
-        inviteUrl,
-        expiresAt: user.inviteExpiresAt,
-      });
-    } else {
+    const payload = {
+      to: user.email,
+      name: user.name,
+      role: user.role,
+      inviteUrl,
+      expiresAt: user.inviteExpiresAt,
+    };
+
+    let inviteEmailSent = false;
+    if (!this.mail.isConfigured()) {
       this.logger.warn(`SMTP no configurado. Enlace de invitación: ${inviteUrl}`);
+    } else if (process.env.VERCEL) {
+      // En serverless el proceso se congela al responder: hay que esperar el SMTP.
+      inviteEmailSent = await this.mail.sendInviteEmail(payload);
+    } else {
+      this.mail.queueInviteEmail(payload);
+      inviteEmailSent = true;
     }
 
     return {
       ...toUserDto(user),
-      inviteEmailSent: queued,
-      inviteUrl: queued ? undefined : inviteUrl,
+      inviteEmailSent,
+      inviteUrl: inviteEmailSent ? undefined : inviteUrl,
     };
   }
 
   private appUrl(): string {
-    const value = this.config.get<string>('APP_PUBLIC_URL') || 'https://preubaproyecto.web.app';
+    const value = this.config.get<string>('APP_PUBLIC_URL') || 'https://promanage-engineering.web.app';
     return value.trim().replace(/^["']|["']$/g, '').replace(/\/$/, '');
   }
 
