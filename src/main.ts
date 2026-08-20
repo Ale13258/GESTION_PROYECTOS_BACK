@@ -5,7 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-async function bootstrap() {
+async function createApp() {
   process.env.TZ = process.env.TZ || 'America/Bogota';
 
   const app = await NestFactory.create(AppModule, { cors: false });
@@ -43,10 +43,29 @@ async function bootstrap() {
     useGlobalPrefix: false,
   });
 
+  return app;
+}
+
+async function bootstrap() {
+  const app = await createApp();
+  const prefix = process.env.API_PREFIX || 'api/v1';
   const port = Number(process.env.PORT || 3000);
   await app.listen(port);
   // eslint-disable-next-line no-console
   console.log(`ProManage API http://localhost:${port}/${prefix}  docs=/docs`);
 }
 
-bootstrap();
+let cachedHandler: ((req: unknown, res: unknown) => unknown) | undefined;
+
+export default async function handler(req: unknown, res: unknown) {
+  if (!cachedHandler) {
+    const app = await createApp();
+    await app.init();
+    cachedHandler = app.getHttpAdapter().getInstance();
+  }
+  return cachedHandler(req, res);
+}
+
+if (!process.env.VERCEL) {
+  void bootstrap();
+}

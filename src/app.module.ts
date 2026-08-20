@@ -27,21 +27,34 @@ import { SettingsModule } from './modules/settings/settings.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST', 'localhost'),
-        port: Number(config.get('DB_PORT', 5432)),
-        username: config.get('DB_USER', 'promanage'),
-        password: config.get('DB_PASSWORD', 'promanage'),
-        database: config.get('DB_NAME', 'promanage'),
-        ssl:
-          config.get('DB_HOST', 'localhost') === 'localhost'
-            ? false
-            : { rejectUnauthorized: false },
-        autoLoadEntities: true,
-        synchronize: true,
-        logging: config.get('NODE_ENV') === 'development',
-      }),
+      useFactory: (config: ConfigService) => {
+        const host = config.get('DB_HOST', 'localhost') ?? 'localhost';
+        const local = host === 'localhost' || host === '127.0.0.1';
+        const pooler = host.includes('pooler.supabase.com');
+        const production = config.get('NODE_ENV') !== 'development';
+        return {
+          type: 'postgres' as const,
+          host,
+          port: pooler && production ? 6543 : Number(config.get('DB_PORT', 5432)),
+          username: config.get('DB_USER', 'promanage'),
+          password: config.get('DB_PASSWORD', 'promanage'),
+          database: config.get('DB_NAME', 'promanage'),
+          ssl: local ? false : { rejectUnauthorized: false },
+          autoLoadEntities: true,
+          synchronize: !production,
+          logging: !production,
+          retryAttempts: 2,
+          retryDelay: 2000,
+          extra: local
+            ? undefined
+            : {
+                max: 1,
+                idleTimeoutMillis: 5000,
+                family: 4,
+                connectionTimeoutMillis: 15000,
+              },
+        };
+      },
     }),
     DatabaseModule,
     CommonModule,
