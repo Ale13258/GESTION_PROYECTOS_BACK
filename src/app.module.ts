@@ -28,17 +28,17 @@ import { SettingsModule } from './modules/settings/settings.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const host = config.get('DB_HOST', 'localhost') ?? 'localhost';
+        const host = String(config.get<string>('DB_HOST', 'localhost') ?? 'localhost');
         const local = host === 'localhost' || host === '127.0.0.1';
         const pooler = host.includes('pooler.supabase.com');
-        const production = config.get('NODE_ENV') !== 'development';
+        const production = config.get<string>('NODE_ENV') !== 'development';
         return {
           type: 'postgres' as const,
           host,
-          port: pooler && production ? 6543 : Number(config.get('DB_PORT', 5432)),
-          username: config.get('DB_USER', 'promanage'),
-          password: config.get('DB_PASSWORD', 'promanage'),
-          database: config.get('DB_NAME', 'promanage'),
+          port: pooler && production ? 6543 : Number(config.get<string>('DB_PORT', '5432')),
+          username: String(config.get<string>('DB_USER', 'promanage') ?? 'promanage'),
+          password: String(config.get<string>('DB_PASSWORD', 'promanage') ?? 'promanage'),
+          database: String(config.get<string>('DB_NAME', 'promanage') ?? 'promanage'),
           ssl: local ? false : { rejectUnauthorized: false },
           autoLoadEntities: true,
           synchronize: !production,

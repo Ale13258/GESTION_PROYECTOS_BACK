@@ -61,9 +61,9 @@ export default async function handler(req: unknown, res: unknown) {
   if (!cachedHandler) {
     const app = await createApp();
     await app.init();
-    cachedHandler = app.getHttpAdapter().getInstance();
+    cachedHandler = app.getHttpAdapter().getInstance() as (req: unknown, res: unknown) => unknown;
   }
-  return cachedHandler(req, res);
+  return cachedHandler!(req, res);
 }
 
 if (!process.env.VERCEL) {
