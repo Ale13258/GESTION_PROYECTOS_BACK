@@ -112,7 +112,11 @@ export class AuthService {
       },
     );
     const ttl = parseTtl(this.config.get('JWT_REFRESH_EXPIRES', '7d'), 7 * 86400);
-    await this.redis.set(`refresh:${user.id}:${jti}`, '1', ttl);
+    try {
+      await this.redis.set(`refresh:${user.id}:${jti}`, '1', ttl);
+    } catch {
+      /* Redis caído: el access token igual sirve; el refresh no se podrá revocar. */
+    }
     return {
       accessToken,
       refreshToken,

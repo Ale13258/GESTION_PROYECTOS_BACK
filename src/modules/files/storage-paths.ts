@@ -42,18 +42,38 @@ export const PROJECT_FOLDER_SEGMENTS = [
   'reportes',
 ] as const;
 
-export function projectDocumentStoragePath(projectId: string, folder: string): string {
+function shortId(id: string): string {
+  return id.replace(/-/g, '').slice(0, 8);
+}
+
+export function projectStorageKey(projectId: string, projectName?: string): string {
+  if (!projectName?.trim()) return projectId;
+  return `${slug(projectName)}--${shortId(projectId)}`;
+}
+
+export function equipmentStorageKey(equipmentId: string, equipmentName?: string): string {
+  if (!equipmentName?.trim()) return equipmentId;
+  return `${slug(equipmentName)}--${shortId(equipmentId)}`;
+}
+
+export function projectDocumentStoragePath(
+  projectId: string,
+  folder: string,
+  projectName?: string,
+): string {
   const segment = PROJECT_FOLDERS[folder] ?? slug(folder);
-  return `proyectos/${projectId}/${segment}`;
+  return `proyectos/${projectStorageKey(projectId, projectName)}/${segment}`;
 }
 
 export function equipmentFileStoragePath(
   projectId: string,
   equipmentId: string,
   category: string,
+  projectName?: string,
+  equipmentName?: string,
 ): string {
   const segment = EQUIPMENT_FOLDERS[category] ?? slug(category);
-  return `proyectos/${projectId}/equipos/${equipmentId}/${segment}`;
+  return `proyectos/${projectStorageKey(projectId, projectName)}/equipos/${equipmentStorageKey(equipmentId, equipmentName)}/${segment}`;
 }
 
 export function systemStoragePath(area: string): string {

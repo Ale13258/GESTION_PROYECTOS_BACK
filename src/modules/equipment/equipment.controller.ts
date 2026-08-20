@@ -46,6 +46,11 @@ class RemoteEquipmentFileDto {
   storageKey: string;
 }
 
+class PatchEquipmentFileDto {
+  @IsString()
+  storageKey: string;
+}
+
 @ApiTags('equipment')
 @ApiBearerAuth()
 @RequirePermissions('manageInventory')
@@ -102,6 +107,15 @@ export class EquipmentController {
   @Post(':id/files/remote')
   addRemoteFile(@Param('id', ParseUUIDPipe) id: string, @Body() body: RemoteEquipmentFileDto) {
     return this.equipment.addRemoteFile(id, body);
+  }
+
+  @Patch(':id/files/:fileId')
+  updateFile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('fileId', ParseUUIDPipe) fileId: string,
+    @Body() body: PatchEquipmentFileDto,
+  ) {
+    return this.equipment.updateFileStorageKey(id, fileId, body.storageKey);
   }
 
   @Delete(':id/files/:fileId')

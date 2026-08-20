@@ -152,8 +152,9 @@ export class EquipmentService {
     if (!file) {
       throw new BadRequestException({ code: 'FILE_REQUIRED', message: 'Archivo requerido', details: [] });
     }
+    const project = await this.projects.findOrThrow(eq.projectId);
     const stored = await this.files.upload(
-      equipmentFileStoragePath(eq.projectId, id, category),
+      equipmentFileStoragePath(eq.projectId, id, category, project.name, eq.name),
       file,
     );
     const row = this.filesRepo.create({
@@ -188,6 +189,16 @@ export class EquipmentService {
     await this.filesRepo.save(row);
     await this.addEvent(id, `Archivo ${payload.category} adjuntado`, 'info');
     return this.get(id);
+  }
+
+  async updateFileStorageKey(equipmentId: string, fileId: string, storageKey: string) {
+    const file = await this.filesRepo.findOne({ where: { id: fileId, equipmentId } });
+    if (!file) {
+      throw new NotFoundException({ code: 'FILE_NOT_FOUND', message: 'Archivo no encontrado', details: [] });
+    }
+    file.storageKey = storageKey;
+    await this.filesRepo.save(file);
+    return this.get(equipmentId);
   }
 
   async removeFile(equipmentId: string, fileId: string) {

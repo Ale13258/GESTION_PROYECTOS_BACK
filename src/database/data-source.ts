@@ -10,6 +10,10 @@ export default new DataSource({
   username: process.env.DB_USER || 'promanage',
   password: process.env.DB_PASSWORD || 'promanage',
   database: process.env.DB_NAME || 'promanage',
+  ssl:
+    (process.env.DB_HOST || 'localhost') === 'localhost'
+      ? false
+      : { rejectUnauthorized: false },
   entities: ['src/modules/**/domain/*.entity.ts'],
   migrations: ['src/database/migrations/*.ts'],
 });

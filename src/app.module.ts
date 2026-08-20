@@ -34,6 +34,10 @@ import { SettingsModule } from './modules/settings/settings.module';
         username: config.get('DB_USER', 'promanage'),
         password: config.get('DB_PASSWORD', 'promanage'),
         database: config.get('DB_NAME', 'promanage'),
+        ssl:
+          config.get('DB_HOST', 'localhost') === 'localhost'
+            ? false
+            : { rejectUnauthorized: false },
         autoLoadEntities: true,
         synchronize: true,
         logging: config.get('NODE_ENV') === 'development',

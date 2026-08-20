@@ -39,14 +39,17 @@ export class DocumentsService {
   }
 
   async upload(projectId: string, folder: string, file: Express.Multer.File) {
-    await this.projects.findOrThrow(projectId);
+    const project = await this.projects.findOrThrow(projectId);
     if (!DOCUMENT_FOLDERS.includes(folder as DocumentFolder)) {
       throw new BadRequestException({ code: 'INVALID_FOLDER', message: 'Carpeta no válida', details: [folder] });
     }
     if (!file) {
       throw new BadRequestException({ code: 'FILE_REQUIRED', message: 'Archivo requerido', details: [] });
     }
-    const stored = await this.files.upload(projectDocumentStoragePath(projectId, folder), file);
+    const stored = await this.files.upload(
+      projectDocumentStoragePath(projectId, folder, project.name),
+      file,
+    );
     const doc = this.repo.create({
       projectId,
       folder: folder as DocumentFolder,
@@ -86,6 +89,12 @@ export class DocumentsService {
 
   async get(id: string) {
     return this.toDto(await this.findOrThrow(id));
+  }
+
+  async updateStorageKey(id: string, storageKey: string) {
+    const doc = await this.findOrThrow(id);
+    doc.storageKey = storageKey;
+    return this.toDto(await this.repo.save(doc));
   }
 
   async download(id: string) {

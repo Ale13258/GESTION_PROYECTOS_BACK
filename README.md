@@ -55,3 +55,13 @@ docker compose up -d minio
 ```
 
 Fase 2 (campana, settings, export PDF/DOCX) tiene endpoints; el PDF de SAE/reportes devuelve payload para que el cliente termine la plantilla.
+
+## Variables en Vercel
+
+Usa [`.env.vercel.example`](.env.vercel.example), no el `.env` de local.
+
+No agregues `NODE_ENV`, `PORT` ni `TZ`. Vercel reserva `TZ` e inyecta `NODE_ENV=production` y `PORT`. El API ya usa `America/Bogota` si `TZ` no existe.
+
+Si una clave ya existe (`DB_HOST` already exists…): **Edit**, no Add. Una sola fila por nombre; elige Production / Preview / Development en esa misma fila. Después de guardar, haz Redeploy.
+
+`CORS_ORIGIN` debe ser la URL del frontend desplegado (sin barra final). `DB_*` y `REDIS_*` deben apuntar a Postgres y Redis en la nube, nunca a `localhost`. `MINIO_*` y `STORAGE_LOCAL_DIR` no hacen falta si `STORAGE_DRIVER=firebase`.

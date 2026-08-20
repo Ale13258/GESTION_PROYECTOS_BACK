@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   StreamableFile,
@@ -39,6 +40,11 @@ class RemoteDocumentDto {
   @Type(() => Number)
   size: number;
 
+  @IsString()
+  storageKey: string;
+}
+
+class PatchDocumentDto {
   @IsString()
   storageKey: string;
 }
@@ -89,6 +95,11 @@ export class DocumentsController {
   @Get('documents/:id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.documents.get(id);
+  }
+
+  @Patch('documents/:id')
+  patch(@Param('id', ParseUUIDPipe) id: string, @Body() body: PatchDocumentDto) {
+    return this.documents.updateStorageKey(id, body.storageKey);
   }
 
   @Get('documents/:id/download')
