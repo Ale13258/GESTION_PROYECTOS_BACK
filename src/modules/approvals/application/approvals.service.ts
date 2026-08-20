@@ -114,8 +114,61 @@ export class ApprovalsService {
     const a = await this.findOrThrow(id);
     if (dto.observations !== undefined) a.observations = dto.observations;
     if (dto.notes !== undefined) a.notes = dto.notes;
+    if (dto.equipmentIds?.length) {
+      if (a.status !== 'En revisión') {
+        throw new BadRequestException({
+          code: 'APPROVAL_LOCKED',
+          message: 'Solo se pueden cambiar los equipos mientras la solicitud está en revisión',
+          details: [],
+        });
+      }
+      const nextIds = [...new Set(dto.equipmentIds)];
+      const items = [];
+      for (const equipmentId of nextIds) {
+        items.push(await this.equipment.findOrThrow(equipmentId));
+      }
+      if (items.some((eq) => eq.projectId !== a.projectId)) {
+        throw new BadRequestException({
+          code: 'MIXED_PROJECTS',
+          message: 'Todos los equipos de la solicitud deben ser del mismo proyecto',
+          details: [],
+        });
+      }
+      const prevIds = a.equipmentIds?.length ? a.equipmentIds : [a.equipmentId];
+      a.equipmentId = nextIds[0];
+      a.equipmentIds = nextIds;
+      await this.repo.save(a);
+      for (const eq of items) {
+        if (eq.status === 'Registrado' || eq.status === 'Pendiente') {
+          await this.equipment.setStatus(eq.id, 'En evaluación');
+        }
+      }
+      for (const prevId of prevIds) {
+        if (nextIds.includes(prevId)) continue;
+        const eq = await this.equipment.findOrThrow(prevId).catch(() => null);
+        if (eq?.status === 'En evaluación') await this.equipment.setStatus(prevId, 'Registrado');
+      }
+      return this.get(id);
+    }
     await this.repo.save(a);
     return this.get(id);
+  }
+
+  async remove(id: string) {
+    const a = await this.findOrThrow(id);
+    const ids = a.equipmentIds?.length ? a.equipmentIds : [a.equipmentId];
+    const status = a.status;
+    await this.repo.remove(a);
+    for (const equipmentId of ids) {
+      const eq = await this.equipment.findOrThrow(equipmentId).catch(() => null);
+      if (!eq) continue;
+      const revert =
+        (status === 'En revisión' && eq.status === 'En evaluación') ||
+        (status === 'Aprobada' && eq.status === 'Aprobado') ||
+        (status === 'Rechazada' && eq.status === 'Rechazado');
+      if (revert) await this.equipment.setStatus(equipmentId, 'Registrado');
+    }
+    return { ok: true };
   }
 
   async review(id: string, dto: ReviewApprovalDto) {

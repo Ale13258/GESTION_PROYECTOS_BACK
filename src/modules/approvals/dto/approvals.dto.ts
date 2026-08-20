@@ -32,6 +32,14 @@ export class UpdateApprovalDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(3)
+  @IsUUID('4', { each: true })
+  equipmentIds?: string[];
 }
 
 export class ReviewApprovalDto {
