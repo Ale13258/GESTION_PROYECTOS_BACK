@@ -21,6 +21,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { HealthModule } from './modules/health/health.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { UserInvites1724169600000 } from './database/migrations/1724169600000-UserInvites';
 
 @Module({
   imports: [
@@ -42,6 +43,8 @@ import { SettingsModule } from './modules/settings/settings.module';
           ssl: local ? false : { rejectUnauthorized: false },
           autoLoadEntities: true,
           synchronize: !production,
+          migrations: [UserInvites1724169600000],
+          migrationsRun: production,
           logging: !production,
           retryAttempts: 2,
           retryDelay: 2000,

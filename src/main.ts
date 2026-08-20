@@ -12,12 +12,22 @@ async function createApp() {
   const prefix = process.env.API_PREFIX || 'api/v1';
   app.setGlobalPrefix(prefix);
 
-  const origin = (process.env.CORS_ORIGIN || 'http://localhost:4200')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const extraOrigins = [
+    'http://localhost:4200',
+    'https://promanage-engineering.web.app',
+    'https://preubaproyecto.web.app',
+  ];
+  const origin = [
+    ...new Set(
+      `${process.env.CORS_ORIGIN || ''}`
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .concat(extraOrigins),
+    ),
+  ];
   app.enableCors({
-    origin: origin.length === 1 ? origin[0] : origin,
+    origin,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

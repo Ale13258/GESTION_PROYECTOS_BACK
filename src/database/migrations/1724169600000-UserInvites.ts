@@ -5,10 +5,14 @@ export class UserInvites1724169600000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "mustSetPassword" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mustSetPassword" boolean NOT NULL DEFAULT false`,
     );
-    await queryRunner.query(`ALTER TABLE "users" ADD "inviteTokenHash" character varying`);
-    await queryRunner.query(`ALTER TABLE "users" ADD "inviteExpiresAt" TIMESTAMP WITH TIME ZONE`);
+    await queryRunner.query(
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "inviteTokenHash" character varying`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "inviteExpiresAt" TIMESTAMP WITH TIME ZONE`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
